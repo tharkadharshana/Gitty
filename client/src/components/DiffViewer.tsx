@@ -238,12 +238,28 @@ export function DiffViewer({
                                 Before (Parent)
                             </div>
                             <div className="diff-code">
-                                {(diffData?.old_content || '').split('\n').map((line, i) => (
-                                    <div key={i} className="diff-line">
-                                        <div className="diff-line-number">{i + 1}</div>
-                                        <div className="diff-line-content">{line}</div>
-                                    </div>
-                                ))}
+                                {(() => {
+                                    const lines = (diffData?.old_content || '').split('\n');
+                                    const MAX_LINES = 1000;
+                                    const displayLines = lines.slice(0, MAX_LINES);
+                                    const hasMore = lines.length > MAX_LINES;
+
+                                    return (
+                                        <>
+                                            {displayLines.map((line, i) => (
+                                                <div key={i} className="diff-line">
+                                                    <div className="diff-line-number">{i + 1}</div>
+                                                    <div className="diff-line-content">{line}</div>
+                                                </div>
+                                            ))}
+                                            {hasMore && (
+                                                <div className="diff-line-more">
+                                                    ... {lines.length - MAX_LINES} more lines omitted for performance ...
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </div>
                         </div>
 
@@ -261,12 +277,28 @@ export function DiffViewer({
                                 />
                             ) : (
                                 <div className="diff-code">
-                                    {(diffData?.new_content || '').split('\n').map((line, i) => (
-                                        <div key={i} className="diff-line">
-                                            <div className="diff-line-number">{i + 1}</div>
-                                            <div className="diff-line-content">{line}</div>
-                                        </div>
-                                    ))}
+                                    {(() => {
+                                        const lines = (diffData?.new_content || '').split('\n');
+                                        const MAX_LINES = 1000;
+                                        const displayLines = lines.slice(0, MAX_LINES);
+                                        const hasMore = lines.length > MAX_LINES;
+
+                                        return (
+                                            <>
+                                                {displayLines.map((line, i) => (
+                                                    <div key={i} className="diff-line">
+                                                        <div className="diff-line-number">{i + 1}</div>
+                                                        <div className="diff-line-content">{line}</div>
+                                                    </div>
+                                                ))}
+                                                {hasMore && (
+                                                    <div className="diff-line-more">
+                                                        ... {lines.length - MAX_LINES} more lines omitted for performance ...
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>

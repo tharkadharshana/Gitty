@@ -8,8 +8,14 @@ A powerful web-based Git history editor that allows you to modify any previous c
 - ✏️ **Edit Any Commit** - Modify files in any historical commit
 - 🔄 **Automatic Rebase** - Replay future commits on top of your changes
 - 📝 **Side-by-Side Diff** - Compare before and after with syntax highlighting
-- ⚠️ **Conflict Resolution** - Handle merge conflicts with an intuitive UI
+- ⚠️- **Conflict Resolution**: Built-in 3-way merge tool for rebases.
 - ⬆️ **Force Push** - Sync your rewritten history with remotes
+
+## 📖 Documentation
+Detailed technical documentation can be found in the [**/docs**](file:///d:/Projects/Gitty/docs/README.md) folder:
+- [Architecture](file:///d:/Projects/Gitty/docs/architecture.md)
+- [Workflow Logic](file:///d:/Projects/Gitty/docs/workflow.md)
+- [API Reference](file:///d:/Projects/Gitty/docs/api_reference.md)
 
 ## 🚀 Quick Start
 

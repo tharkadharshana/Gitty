@@ -64,6 +64,12 @@ export function CommitDetails({
 }: CommitDetailsProps) {
     const [isEditMode, setEditMode] = useState(false);
     const [workflowStep, setWorkflowStep] = useState<'idle' | 'checkout' | 'editing' | 'rebasing' | 'complete'>('idle');
+    const [targetBranch, setTargetBranch] = useState(repoInfo.current_branch || '');
+
+    // Update target branch if we move to a non-detached state
+    if (!repoInfo.is_detached && repoInfo.current_branch && targetBranch !== repoInfo.current_branch) {
+        setTargetBranch(repoInfo.current_branch);
+    }
 
     // Conflict and Push States
     const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
@@ -89,7 +95,7 @@ export function CommitDetails({
             if (conflicts.length > 0) {
                 return gitApi.continueRebase();
             }
-            return gitApi.rebaseOnto(newHash, commit.hash, repoInfo.current_branch);
+            return gitApi.rebaseOnto(newHash, commit.hash, targetBranch);
         },
         onSuccess: (result) => {
             if (result.success) {
@@ -127,7 +133,7 @@ export function CommitDetails({
 
     // Force Push Mutation
     const forcePushMutation = useMutation({
-        mutationFn: () => gitApi.forcePush('origin', repoInfo.current_branch), // Assuming origin for now
+        mutationFn: () => gitApi.forcePush('origin', targetBranch), // Assuming origin for now
         onSuccess: () => {
             setShowForcePush(false);
             addToast('success', `Force pushed to origin/${repoInfo.current_branch}`);
@@ -148,7 +154,9 @@ export function CommitDetails({
             abortRebaseMutation.mutate();
         } else {
             try {
-                await gitApi.checkoutBranch(repoInfo.current_branch);
+                if (targetBranch) {
+                    await gitApi.checkoutBranch(targetBranch);
+                }
                 setEditMode(false);
                 setWorkflowStep('idle');
                 addToast('info', 'Edit cancelled, returned to branch.');
@@ -241,15 +249,16 @@ export function CommitDetails({
                             <button
                                 className="btn btn-primary"
                                 onClick={handleStartEdit}
-                                disabled={repoInfo.is_detached}
+                                disabled={repoInfo.is_detached && !targetBranch}
                             >
                                 <Edit3 size={16} />
                                 Edit This Commit
                             </button>
-                            {repoInfo.is_detached && (
+
+                            {repoInfo.is_detached && !targetBranch && (
                                 <span style={{ fontSize: '12px', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <AlertTriangle size={14} />
-                                    Cannot edit while in detached HEAD
+                                    Select a branch in the header first to enable rebase
                                 </span>
                             )}
 
@@ -257,7 +266,7 @@ export function CommitDetails({
                             <button
                                 className="btn btn-danger"
                                 onClick={() => setShowForcePush(true)}
-                                disabled={repoInfo.is_detached}
+                                disabled={!targetBranch}
                                 style={{ marginLeft: 'auto' }}
                             >
                                 <Upload size={16} />
@@ -336,15 +345,17 @@ export function CommitDetails({
             </div>
 
             {/* Force Push Modal */}
-            {showForcePush && (
-                <ForcePushModal
-                    branch={repoInfo.current_branch}
-                    remote="origin"
-                    onConfirm={() => forcePushMutation.mutate()}
-                    onCancel={() => setShowForcePush(false)}
-                    isLoading={forcePushMutation.isPending}
-                />
-            )}
-        </div>
+            {
+                showForcePush && (
+                    <ForcePushModal
+                        branch={targetBranch}
+                        remote="origin"
+                        onConfirm={() => forcePushMutation.mutate()}
+                        onCancel={() => setShowForcePush(false)}
+                        isLoading={forcePushMutation.isPending}
+                    />
+                )
+            }
+        </div >
     );
 }

@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    GitBranch,
     FolderOpen,
     RefreshCw,
     Settings,
@@ -12,6 +11,7 @@ import { CommitList } from './components/CommitList';
 import { CommitDetails } from './components/CommitDetails';
 import { DiffViewer } from './components/DiffViewer';
 import { OpenRepoModal } from './components/OpenRepoModal';
+import { BranchSelector } from './components/BranchSelector';
 import { Toast, ToastContainer, useToast } from './components/Toast';
 import type { CommitInfo, FileChange, RepoInfo } from './types';
 
@@ -117,10 +117,10 @@ function App() {
                             <FolderOpen size={14} />
                             <span>{repoInfo.path}</span>
                         </div>
-                        <div className="branch-badge">
-                            <GitBranch size={12} />
-                            <span>{repoInfo.is_detached ? 'DETACHED' : repoInfo.current_branch}</span>
-                        </div>
+                        <BranchSelector
+                            repoInfo={repoInfo}
+                            onBranchChange={handleCommitUpdated}
+                        />
                     </>
                 ) : (
                     <div className="repo-path" style={{ opacity: 0.5 }}>
@@ -174,7 +174,12 @@ function App() {
                                 file={selectedFile}
                                 repoInfo={repoInfo!}
                                 onBack={() => setSelectedFile(null)}
-                                onUpdate={handleCommitUpdated}
+                                onUpdate={() => {
+                                    gitApi.getRepoInfo().then(info => {
+                                        queryClient.setQueryData(['repoInfo'], info);
+                                        handleCommitUpdated();
+                                    });
+                                }}
                                 addToast={addToast}
                             />
                         ) : (
