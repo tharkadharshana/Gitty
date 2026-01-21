@@ -3,7 +3,7 @@ import cors from 'cors';
 import gitRoutes from './routes/git';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3080;
 
 // Middleware
 app.use(cors());
