@@ -13,7 +13,9 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 import { gitApi } from '../services/api';
-import type { CommitInfo, FileChange, RepoInfo } from '../types';
+import { ConflictResolver } from './ConflictResolver';
+import { ForcePushModal } from './ForcePushModal';
+import type { CommitInfo, FileChange, RepoInfo, ConflictInfo } from '../types';
 import type { ToastType } from './Toast';
 
 interface CommitDetailsProps {
@@ -63,6 +65,10 @@ export function CommitDetails({
     const [isEditMode, setEditMode] = useState(false);
     const [workflowStep, setWorkflowStep] = useState<'idle' | 'checkout' | 'editing' | 'rebasing' | 'complete'>('idle');
 
+    // Conflict and Push States
+    const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
+    const [showForcePush, setShowForcePush] = useState(false);
+
     // Mutation for starting edit workflow
     const checkoutMutation = useMutation({
         mutationFn: () => gitApi.checkoutCommit(commit.hash),
@@ -79,15 +85,55 @@ export function CommitDetails({
     // Mutation for completing the rebase
     const rebaseMutation = useMutation({
         mutationFn: async (newHash: string) => {
+            // If we already have conflicts, we are continuing
+            if (conflicts.length > 0) {
+                return gitApi.continueRebase();
+            }
             return gitApi.rebaseOnto(newHash, commit.hash, repoInfo.current_branch);
         },
-        onSuccess: () => {
-            setWorkflowStep('complete');
-            addToast('success', 'History successfully rewritten!');
-            onUpdate();
+        onSuccess: (result) => {
+            if (result.success) {
+                setConflicts([]);
+                setWorkflowStep('complete');
+                addToast('success', 'Rebase complete! History rewritten.');
+                onUpdate();
+            } else if (result.conflicts) {
+                setConflicts(result.conflicts);
+                setWorkflowStep('rebasing');
+                addToast('warning', 'Conflicts detected during rebase. Please resolve them.');
+            } else {
+                addToast('error', `Rebase failed: ${result.message}`);
+            }
         },
         onError: (error: Error) => {
             addToast('error', `Rebase failed: ${error.message}`);
+        },
+    });
+
+    // Mutation for aborting rebase
+    const abortRebaseMutation = useMutation({
+        mutationFn: () => gitApi.abortRebase(),
+        onSuccess: () => {
+            setConflicts([]);
+            setWorkflowStep('idle');
+            setEditMode(false);
+            gitApi.checkoutBranch(repoInfo.current_branch);
+            addToast('info', 'Rebase aborted. Changes discarded.');
+        },
+        onError: (error: Error) => {
+            addToast('error', `Failed to abort: ${error.message}`);
+        },
+    });
+
+    // Force Push Mutation
+    const forcePushMutation = useMutation({
+        mutationFn: () => gitApi.forcePush('origin', repoInfo.current_branch), // Assuming origin for now
+        onSuccess: () => {
+            setShowForcePush(false);
+            addToast('success', `Force pushed to origin/${repoInfo.current_branch}`);
+        },
+        onError: (error: Error) => {
+            addToast('error', `Force push failed: ${error.message}`);
         },
     });
 
@@ -98,15 +144,51 @@ export function CommitDetails({
     };
 
     const handleCancelEdit = async () => {
-        try {
-            await gitApi.checkoutBranch(repoInfo.current_branch);
-            setEditMode(false);
-            setWorkflowStep('idle');
-            addToast('info', 'Edit cancelled, returned to branch.');
-        } catch (error: any) {
-            addToast('error', `Failed to return to branch: ${error.message}`);
+        if (workflowStep === 'rebasing' || conflicts.length > 0) {
+            abortRebaseMutation.mutate();
+        } else {
+            try {
+                await gitApi.checkoutBranch(repoInfo.current_branch);
+                setEditMode(false);
+                setWorkflowStep('idle');
+                addToast('info', 'Edit cancelled, returned to branch.');
+            } catch (error: any) {
+                addToast('error', `Failed to return to branch: ${error.message}`);
+            }
         }
     };
+
+    const handleResolveConflicts = async (resolutions: Map<string, string>) => {
+        try {
+            // 1. Write resolved files
+            for (const [filepath, content] of resolutions.entries()) {
+                await gitApi.writeFile(filepath, content);
+            }
+
+            // 2. Stage them
+            const filesToStage = Array.from(resolutions.keys());
+            await gitApi.stageFiles(filesToStage);
+
+            // 3. Continue rebase
+            // We pass a dummy hash because continueRebase doesn't need it, 
+            // but rebaseMutation expects an argument.
+            rebaseMutation.mutate('continue');
+
+        } catch (error: any) {
+            addToast('error', `Failed to resolve: ${error.message}`);
+        }
+    };
+
+    if (conflicts.length > 0) {
+        return (
+            <ConflictResolver
+                conflicts={conflicts}
+                onResolve={handleResolveConflicts}
+                onAbort={() => abortRebaseMutation.mutate()}
+                addToast={addToast}
+            />
+        );
+    }
 
     return (
         <div className="commit-details">
@@ -170,6 +252,17 @@ export function CommitDetails({
                                     Cannot edit while in detached HEAD
                                 </span>
                             )}
+
+                            {/* Force Push Button (Visible when NOT editing) */}
+                            <button
+                                className="btn btn-danger"
+                                onClick={() => setShowForcePush(true)}
+                                disabled={repoInfo.is_detached}
+                                style={{ marginLeft: 'auto' }}
+                            >
+                                <Upload size={16} />
+                                Force Push
+                            </button>
                         </>
                     ) : (
                         <>
@@ -194,10 +287,6 @@ export function CommitDetails({
             {/* Files List */}
             <div className="commit-details-content">
                 <div className="file-tree">
-                    <div className="file-tree-header">
-                        Files Changed ({files.length})
-                    </div>
-
                     {files.length === 0 ? (
                         <div style={{ padding: '16px', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
                             No files in this commit
@@ -244,27 +333,18 @@ export function CommitDetails({
                         {commit.hash}
                     </code>
                 </div>
-
-                {/* Parent commits */}
-                {commit.parent_hashes.length > 0 && (
-                    <div style={{ marginTop: '16px', padding: '16px', background: 'var(--color-bg-secondary)', borderRadius: '8px' }}>
-                        <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>
-                            Parent Commit{commit.parent_hashes.length > 1 ? 's' : ''}
-                        </div>
-                        {commit.parent_hashes.map((hash, i) => (
-                            <code key={i} style={{
-                                display: 'block',
-                                fontFamily: 'var(--font-family-mono)',
-                                fontSize: '12px',
-                                color: 'var(--color-info)',
-                                marginTop: i > 0 ? '4px' : 0,
-                            }}>
-                                {hash.substring(0, 7)}
-                            </code>
-                        ))}
-                    </div>
-                )}
             </div>
+
+            {/* Force Push Modal */}
+            {showForcePush && (
+                <ForcePushModal
+                    branch={repoInfo.current_branch}
+                    remote="origin"
+                    onConfirm={() => forcePushMutation.mutate()}
+                    onCancel={() => setShowForcePush(false)}
+                    isLoading={forcePushMutation.isPending}
+                />
+            )}
         </div>
     );
 }
