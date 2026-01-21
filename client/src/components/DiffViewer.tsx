@@ -4,11 +4,11 @@ import {
     ArrowLeft,
     Save,
     RotateCcw,
-    Check,
+
     AlertTriangle,
     Columns,
     Rows,
-    Upload,
+
 } from 'lucide-react';
 import { gitApi } from '../services/api';
 import type { CommitInfo, FileChange, RepoInfo, DiffResult } from '../types';

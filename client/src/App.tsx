@@ -24,7 +24,7 @@ function App() {
     const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
 
     // Query for repository info
-    const { data: repoInfo, isLoading: isLoadingRepo } = useQuery<RepoInfo>({
+    const { data: repoInfo } = useQuery<RepoInfo>({
         queryKey: ['repoInfo'],
         queryFn: () => gitApi.getRepoInfo(),
         enabled: false, // Only fetch when we've opened a repo

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { GitCommit, Clock, User } from 'lucide-react';
+import { GitCommit } from 'lucide-react';
 import type { CommitInfo } from '../types';
 
 interface CommitListProps {
@@ -96,7 +96,7 @@ export function CommitList({
     selectedCommit,
     onSelectCommit,
     isLoading,
-    currentBranch,
+
 }: CommitListProps) {
     if (isLoading) {
         return (

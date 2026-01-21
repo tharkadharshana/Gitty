@@ -5,7 +5,7 @@ import {
     X,
     ArrowLeft,
     ArrowRight,
-    RefreshCw,
+
 } from 'lucide-react';
 import type { ConflictInfo } from '../types';
 import type { ToastType } from './Toast';
