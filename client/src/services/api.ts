@@ -7,6 +7,8 @@ import type {
     DiffResult,
     FileContent,
     OperationResult,
+    RefactorPlan,
+    RefactorCommit,
 } from '../types';
 
 const api = axios.create({
@@ -128,6 +130,16 @@ export const gitApi = {
 
     async moveBranchToHead(branch: string): Promise<OperationResult> {
         const response = await api.post<OperationResult>('/move-branch', { branch });
+        return response.data;
+    },
+
+    async analyzeRefactor(filepath: string, targetContent: string): Promise<RefactorPlan> {
+        const response = await api.post<RefactorPlan>('/analyze-refactor', { filepath, targetContent });
+        return response.data;
+    },
+
+    async applyRefactor(filepath: string, commits: RefactorCommit[]): Promise<OperationResult> {
+        const response = await api.post<OperationResult>('/apply-refactor', { filepath, commits });
         return response.data;
     },
 };

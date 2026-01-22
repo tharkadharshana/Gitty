@@ -11,8 +11,10 @@ import {
 
     ChevronUp,
     ChevronDown,
+    Wand2,
 } from 'lucide-react';
 import { gitApi } from '../services/api';
+import { RefactorWizard } from './RefactorWizard';
 import type { CommitInfo, FileChange, RepoInfo, DiffResult } from '../types';
 import type { ToastType } from './Toast';
 
@@ -38,6 +40,7 @@ export function DiffViewer({
     const [viewMode, setViewMode] = useState<ViewMode>('split');
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState('');
+    const [showRefactor, setShowRefactor] = useState(false);
     const [originalBranch] = useState(repoInfo.current_branch);
 
     // Fetch diff data
@@ -232,13 +235,24 @@ export function DiffViewer({
 
                     {/* Edit actions */}
                     {!isEditing ? (
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleStartEdit}
-                            disabled={startEditMutation.isPending || file.status === 'deleted'}
-                        >
-                            Edit File
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => setShowRefactor(true)}
+                                disabled={startEditMutation.isPending || file.status === 'deleted'}
+                                title="AI-Assisted Multi-Commit Refactor"
+                            >
+                                <Wand2 size={16} />
+                                Multi-Commit Refactor
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleStartEdit}
+                                disabled={startEditMutation.isPending || file.status === 'deleted'}
+                            >
+                                Edit File
+                            </button>
+                        </div>
                     ) : (
                         <>
                             <button
@@ -265,6 +279,18 @@ export function DiffViewer({
                     )}
                 </div>
             </div>
+
+            {/* AI Refactor Wizard */}
+            {showRefactor && (
+                <RefactorWizard
+                    filepath={file.filepath}
+                    onClose={() => setShowRefactor(false)}
+                    onComplete={() => {
+                        setShowRefactor(false);
+                        onUpdate();
+                    }}
+                />
+            )}
 
             {/* Warning banner when editing */}
             {isEditing && (
