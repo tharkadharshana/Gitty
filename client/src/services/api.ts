@@ -23,6 +23,16 @@ export const gitApi = {
         return response.data;
     },
 
+    async browseFolders(path?: string): Promise<{
+        currentPath: string;
+        parentPath: string | null;
+        folders: { name: string; path: string; isRepo: boolean }[];
+        drives: string[];
+    }> {
+        const response = await api.post('/browse', { path });
+        return response.data;
+    },
+
     async getRepoInfo(): Promise<RepoInfo> {
         const response = await api.get<RepoInfo>('/info');
         return response.data;

@@ -43,6 +43,68 @@ export class GitService {
     }
 
     /**
+     * List subdirectories and drives for browsing
+     */
+    async browseFolders(targetPath: string = '.'): Promise<{
+        currentPath: string;
+        parentPath: string | null;
+        folders: { name: string; path: string; isRepo: boolean }[];
+        drives: string[];
+    }> {
+        const absolutePath = path.resolve(targetPath);
+        const parentPath = path.dirname(absolutePath) === absolutePath ? null : path.dirname(absolutePath);
+
+        let drives: string[] = [];
+        if (process.platform === 'win32') {
+            try {
+                const { execSync } = require('child_process');
+                const output = execSync('wmic logicaldisk get name').toString();
+                drives = output.split('\n')
+                    .map((line: string) => line.trim())
+                    .filter((line: string) => line.match(/^[A-Z]:$/));
+            } catch (err) {
+                console.error('Failed to list drives:', err);
+            }
+        }
+
+        try {
+            const entries = await fs.readdir(absolutePath, { withFileTypes: true });
+            const folders = [];
+
+            for (const entry of entries) {
+                if (entry.isDirectory() && !entry.name.startsWith('.')) {
+                    const fullPath = path.join(absolutePath, entry.name);
+                    let isRepo = false;
+
+                    // Specific check for .git directory to avoid false positives from parent repos
+                    try {
+                        const gitDir = path.join(fullPath, '.git');
+                        await fs.access(gitDir);
+                        isRepo = true;
+                    } catch {
+                        isRepo = false;
+                    }
+
+                    folders.push({
+                        name: entry.name,
+                        path: fullPath,
+                        isRepo
+                    });
+                }
+            }
+
+            return {
+                currentPath: absolutePath,
+                parentPath,
+                folders: folders.sort((a, b) => a.name.localeCompare(b.name)),
+                drives
+            };
+        } catch (error: any) {
+            throw new Error(`Failed to browse path ${absolutePath}: ${error.message}`);
+        }
+    }
+
+    /**
      * Get information about the current repository
      */
     async getRepoInfo(): Promise<RepoInfo> {

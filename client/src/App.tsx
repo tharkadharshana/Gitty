@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     FolderOpen,
@@ -23,11 +23,46 @@ function App() {
     const [selectedCommit, setSelectedCommit] = useState<CommitInfo | null>(null);
     const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
 
+    // Sidebar resizing
+    const [sidebarWidth, setSidebarWidth] = useState(320);
+    const [isResizing, setIsResizing] = useState(false);
+
+    const startResizing = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    const stopResizing = useCallback(() => {
+        setIsResizing(false);
+    }, []);
+
+    const resize = useCallback((e: MouseEvent) => {
+        if (isResizing) {
+            const newWidth = e.clientX;
+            if (newWidth > 200 && newWidth < 600) {
+                setSidebarWidth(newWidth);
+            }
+        }
+    }, [isResizing]);
+
+    useEffect(() => {
+        if (isResizing) {
+            window.addEventListener('mousemove', resize);
+            window.addEventListener('mouseup', stopResizing);
+        } else {
+            window.removeEventListener('mousemove', resize);
+            window.removeEventListener('mouseup', stopResizing);
+        }
+        return () => {
+            window.removeEventListener('mousemove', resize);
+            window.removeEventListener('mouseup', stopResizing);
+        };
+    }, [isResizing, resize, stopResizing]);
+
     // Query for repository info
-    const { data: repoInfo } = useQuery<RepoInfo>({
+    const { data: repoInfo, refetch: refetchRepoInfo } = useQuery<RepoInfo>({
         queryKey: ['repoInfo'],
         queryFn: () => gitApi.getRepoInfo(),
-        enabled: false, // Only fetch when we've opened a repo
         retry: false,
     });
 
@@ -74,16 +109,23 @@ function App() {
 
     const handleRefresh = useCallback(() => {
         refetchCommits();
+        refetchRepoInfo();
         addToast('info', 'Refreshing commits...');
-    }, [refetchCommits, addToast]);
+    }, [refetchCommits, refetchRepoInfo, addToast]);
 
-    const handleCommitUpdated = useCallback(() => {
-        queryClient.invalidateQueries({ queryKey: ['commits'] });
+    const handleCommitUpdated = useCallback(async () => {
+        // First invalidate to mark stale
         queryClient.invalidateQueries({ queryKey: ['repoInfo'] });
+        queryClient.invalidateQueries({ queryKey: ['commits'] });
+        queryClient.invalidateQueries({ queryKey: ['branches'] });
+
+        // Explicitly refetch repo info first so everything else dependent on it updates
+        await refetchRepoInfo();
+
         setSelectedCommit(null);
         setSelectedFile(null);
         addToast('success', 'Commit history updated!');
-    }, [queryClient, addToast]);
+    }, [queryClient, addToast, refetchRepoInfo]);
 
     return (
         <div className="app-layout">
@@ -155,7 +197,7 @@ function App() {
             {/* Main Content */}
             <main className="app-main">
                 {/* Sidebar - Commit List */}
-                <aside className="app-sidebar">
+                <aside className="app-sidebar" style={{ width: `${sidebarWidth}px` }}>
                     <CommitList
                         commits={commits || []}
                         selectedCommit={selectedCommit}
@@ -164,6 +206,11 @@ function App() {
                         currentBranch={repoInfo?.current_branch}
                     />
                 </aside>
+
+                <div
+                    className={`resize-handle ${isResizing ? 'resizing' : ''}`}
+                    onMouseDown={startResizing}
+                />
 
                 {/* Main Content Area */}
                 <div className="app-content">
@@ -174,12 +221,7 @@ function App() {
                                 file={selectedFile}
                                 repoInfo={repoInfo!}
                                 onBack={() => setSelectedFile(null)}
-                                onUpdate={() => {
-                                    gitApi.getRepoInfo().then(info => {
-                                        queryClient.setQueryData(['repoInfo'], info);
-                                        handleCommitUpdated();
-                                    });
-                                }}
+                                onUpdate={handleCommitUpdated}
                                 addToast={addToast}
                             />
                         ) : (

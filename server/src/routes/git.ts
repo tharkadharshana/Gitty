@@ -24,6 +24,20 @@ router.post('/open', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/git/browse
+ * Browse folders for repository selection
+ */
+router.post('/browse', async (req: Request, res: Response) => {
+    try {
+        const { path } = req.body;
+        const result = await gitService.browseFolders(path);
+        res.json(result);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+/**
  * GET /api/git/info
  * Get current repository info
  */
