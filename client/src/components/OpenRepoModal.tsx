@@ -62,9 +62,10 @@ export function OpenRepoModal({ onOpen, onClose, isLoading }: OpenRepoModalProps
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         {/* Selected Path Input */}
-                        <div style={{ marginBottom: '16px' }}>
+                        <div style={{ marginBottom: '20px' }}>
                             <label
                                 htmlFor="repo-path"
+                                className="input-label"
                                 style={{
                                     display: 'block',
                                     marginBottom: '8px',
@@ -86,48 +87,42 @@ export function OpenRepoModal({ onOpen, onClose, isLoading }: OpenRepoModalProps
                             />
                         </div>
 
-                        {/* Drive & Path Toolbar */}
-                        <div style={{
-                            display: 'flex',
-                            gap: '8px',
-                            marginBottom: '12px',
-                            alignItems: 'center'
-                        }}>
-                            {browseData?.drives && browseData.drives.length > 0 && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <HardDrive size={14} className="text-muted" />
-                                    <select
-                                        className="btn btn-secondary btn-sm"
-                                        style={{ padding: '2px 8px', height: '32px', appearance: 'auto' }}
-                                        onChange={(e) => handleDriveChange(e.target.value)}
-                                        value={browseData.currentPath.substring(0, 2).toUpperCase()}
-                                    >
-                                        {browseData.drives.map(drive => (
-                                            <option key={drive} value={drive}>{drive}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-
-                            <div style={{ flex: 1, overflow: 'hidden' }}>
-                                <div className="file-explorer-header" style={{ borderRadius: '6px' }}>
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-icon btn-sm"
-                                        onClick={handleGoBack}
-                                        disabled={!browseData?.parentPath || isBrowsing}
-                                    >
-                                        <ChevronLeft size={16} />
-                                    </button>
-                                    <div className="file-explorer-current-path" title={browseData?.currentPath}>
-                                        {isBrowsing ? 'Loading...' : browseData?.currentPath}
+                        {/* File Explorer Container */}
+                        <div className="file-explorer">
+                            {/* Toolbar */}
+                            <div className="file-explorer-header">
+                                {browseData?.drives && browseData.drives.length > 0 && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
+                                        <HardDrive size={14} className="text-muted" />
+                                        <select
+                                            className="btn btn-secondary btn-sm"
+                                            style={{ padding: '2px 8px', height: '28px', appearance: 'auto', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)' }}
+                                            onChange={(e) => handleDriveChange(e.target.value)}
+                                            value={browseData.currentPath.substring(0, 2).toUpperCase()}
+                                        >
+                                            {browseData.drives.map(drive => (
+                                                <option key={drive} value={drive}>{drive}</option>
+                                            ))}
+                                        </select>
                                     </div>
+                                )}
+
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-icon btn-sm"
+                                    onClick={handleGoBack}
+                                    disabled={!browseData?.parentPath || isBrowsing}
+                                    title="Go Back"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+
+                                <div className="file-explorer-current-path" title={browseData?.currentPath}>
+                                    {isBrowsing ? 'Loading...' : browseData?.currentPath}
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Explorer List */}
-                        <div className="file-explorer" style={{ maxHeight: '350px', marginTop: 0 }}>
+                            {/* List */}
                             <div className="file-explorer-list">
                                 {isBrowsing ? (
                                     <div className="file-explorer-empty">
@@ -150,7 +145,9 @@ export function OpenRepoModal({ onOpen, onClose, isLoading }: OpenRepoModalProps
                                             onClick={() => handleSelectFolder(folder.path)}
                                             onDoubleClick={() => handleFolderClick(folder.path)}
                                         >
-                                            <Folder size={16} fill={folder.isRepo ? 'currentColor' : 'none'} />
+                                            <div className="file-explorer-item-icon">
+                                                <Folder size={18} fill={folder.isRepo ? 'rgba(63, 185, 80, 0.2)' : 'none'} color={folder.isRepo ? 'var(--color-success)' : 'var(--color-info)'} />
+                                            </div>
                                             <div className="file-explorer-item-name">
                                                 {folder.name}
                                             </div>
@@ -158,6 +155,7 @@ export function OpenRepoModal({ onOpen, onClose, isLoading }: OpenRepoModalProps
                                             <button
                                                 type="button"
                                                 className="btn btn-ghost btn-icon btn-sm"
+                                                style={{ marginLeft: 'auto', padding: '4px' }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleFolderClick(folder.path);
@@ -172,12 +170,12 @@ export function OpenRepoModal({ onOpen, onClose, isLoading }: OpenRepoModalProps
                         </div>
 
                         <p style={{
-                            marginTop: '12px',
-                            fontSize: '11px',
+                            marginTop: '16px',
+                            fontSize: '12px',
                             color: 'var(--color-text-tertiary)',
                             textAlign: 'center'
                         }}>
-                            Double-click a folder to enter, single-click to select.
+                            Double-click to enter • Single-click to select path
                         </p>
                     </div>
 
