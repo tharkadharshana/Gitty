@@ -652,6 +652,35 @@ body {
   color: var(--color-text-primary);
 }
 
+.diff-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 0 var(--spacing-2);
+  padding: 2px var(--spacing-3);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.diff-nav-count {
+  min-width: 40px;
+  text-align: center;
+}
+
+.editing-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(210, 153, 34, 0.15);
+  border-bottom: 1px solid var(--color-warning);
+  font-size: 13px;
+  color: var(--color-warning);
+}
+
 .diff-content {
   flex: 1;
   overflow: auto;
@@ -666,6 +695,7 @@ body {
 .diff-pane {
   overflow: auto;
   border-right: 1px solid var(--color-border-primary);
+  scroll-behavior: smooth;
 }
 
 .diff-pane:last-child {
@@ -714,19 +744,29 @@ body {
 }
 
 .diff-line.added {
-  background: var(--color-success-subtle);
+  background: rgba(46, 160, 67, 0.15);
 }
 
 .diff-line.added .diff-line-content {
-  color: var(--color-success);
+  color: #7ee787;
+}
+
+.diff-line.added .diff-line-number {
+  background: rgba(46, 160, 67, 0.25);
+  color: #7ee787;
 }
 
 .diff-line.removed {
-  background: var(--color-danger-subtle);
+  background: rgba(248, 81, 73, 0.15);
 }
 
 .diff-line.removed .diff-line-content {
-  color: var(--color-danger);
+  color: #ffa198;
+}
+
+.diff-line.removed .diff-line-number {
+  background: rgba(248, 81, 73, 0.25);
+  color: #ffa198;
 }
 
 /* ========================================
@@ -1141,6 +1181,8 @@ body {
 /* Branch Selector */
 .branch-selector {
   position: relative;
+  z-index: 500;
+  /* Ensure it's above other header elements */
 }
 
 .branch-trigger {
@@ -1201,7 +1243,9 @@ body {
   box-shadow: var(--shadow-xl);
   z-index: 1000;
   overflow: hidden;
-  animation: slideUp 0.2s ease-out;
+  animation: slideUp 0.15s ease-out;
+  pointer-events: auto;
+  /* Ensure it accepts clicks */
 }
 
 .branch-dropdown-header {

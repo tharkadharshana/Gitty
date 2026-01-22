@@ -9,6 +9,8 @@ import {
     Columns,
     Rows,
 
+    ChevronUp,
+    ChevronDown,
 } from 'lucide-react';
 import { gitApi } from '../services/api';
 import type { CommitInfo, FileChange, RepoInfo, DiffResult } from '../types';
@@ -44,11 +46,37 @@ export function DiffViewer({
         queryFn: () => gitApi.getFileDiff(commit.hash, file.filepath),
     });
 
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [totalChanges, setTotalChanges] = useState(0);
+
     useEffect(() => {
         if (diffData) {
             setEditedContent(diffData.new_content);
+            const sum = diffData.hunks.reduce((acc, hunk) => {
+                return acc + hunk.lines.filter(l => l.type === 'add' || l.type === 'remove').length;
+            }, 0);
+            setTotalChanges(sum);
         }
     }, [diffData]);
+
+    const scrollToIndex = (index: number) => {
+        if (totalChanges === 0) return;
+        const target = (index + totalChanges) % totalChanges;
+        setCurrentIndex(target);
+
+        // Find the N-th changed line element and scroll to it
+        const changedLines = document.querySelectorAll('.diff-line.added, .diff-line.removed');
+        if (changedLines[target]) {
+            changedLines[target].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+
+    // Auto-scroll to first change when loaded
+    useEffect(() => {
+        if (diffData && diffData.hunks.length > 0) {
+            setTimeout(() => scrollToIndex(0), 100);
+        }
+    }, [diffData?.hunks]);
 
     // Mutation for saving changes
     const saveMutation = useMutation({
@@ -101,7 +129,12 @@ export function DiffViewer({
 
     // Cancel editing
     const cancelMutation = useMutation({
-        mutationFn: () => gitApi.checkoutBranch(originalBranch),
+        mutationFn: () => {
+            if (originalBranch && originalBranch !== 'DETACHED') {
+                return gitApi.checkoutBranch(originalBranch);
+            }
+            return Promise.resolve({ success: true, message: 'Discarded' });
+        },
         onSuccess: () => {
             setIsEditing(false);
             if (diffData) {
@@ -110,7 +143,9 @@ export function DiffViewer({
             addToast('info', 'Changes discarded.');
         },
         onError: (error: Error) => {
-            addToast('error', `Failed to cancel: ${error.message}`);
+            console.error('Cancel error:', error);
+            setIsEditing(false);
+            addToast('warning', 'Edit mode exited, but could not return to branch.');
         },
     });
 
@@ -172,6 +207,29 @@ export function DiffViewer({
                         </button>
                     </div>
 
+                    {/* Diff Navigator */}
+                    {diffData && diffData.hunks.length > 0 && (
+                        <div className="diff-nav">
+                            <button
+                                className="btn btn-ghost btn-icon"
+                                title="Previous change"
+                                onClick={() => scrollToIndex(currentIndex - 1)}
+                            >
+                                <ChevronUp size={14} />
+                            </button>
+                            <span className="diff-nav-count">
+                                {currentIndex + 1} / {totalChanges}
+                            </span>
+                            <button
+                                className="btn btn-ghost btn-icon"
+                                title="Next change"
+                                onClick={() => scrollToIndex(currentIndex + 1)}
+                            >
+                                <ChevronDown size={14} />
+                            </button>
+                        </div>
+                    )}
+
                     {/* Edit actions */}
                     {!isEditing ? (
                         <button
@@ -210,16 +268,7 @@ export function DiffViewer({
 
             {/* Warning banner when editing */}
             {isEditing && (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    background: 'var(--color-warning-subtle)',
-                    borderBottom: '1px solid var(--color-warning)',
-                    fontSize: '13px',
-                    color: 'var(--color-warning)',
-                }}>
+                <div className="editing-warning">
                     <AlertTriangle size={16} />
                     <span>
                         You are editing <strong>{commit.abbreviated_hash}</strong>.
@@ -230,109 +279,147 @@ export function DiffViewer({
 
             {/* Diff Content */}
             <div className="diff-content">
-                {viewMode === 'split' ? (
-                    <div className="diff-split">
-                        {/* Before (Old Content) */}
-                        <div className="diff-pane">
-                            <div className="diff-pane-header">
-                                Before (Parent)
-                            </div>
-                            <div className="diff-code">
-                                {(() => {
-                                    const lines = (diffData?.old_content || '').split('\n');
-                                    const MAX_LINES = 1000;
-                                    const displayLines = lines.slice(0, MAX_LINES);
-                                    const hasMore = lines.length > MAX_LINES;
+                {(() => {
+                    // Compute which lines are changed for the split view
+                    const removedLines = new Set<number>();
+                    const addedLines = new Set<number>();
 
-                                    return (
-                                        <>
-                                            {displayLines.map((line, i) => (
-                                                <div key={i} className="diff-line">
-                                                    <div className="diff-line-number">{i + 1}</div>
-                                                    <div className="diff-line-content">{line}</div>
-                                                </div>
-                                            ))}
-                                            {hasMore && (
-                                                <div className="diff-line-more">
-                                                    ... {lines.length - MAX_LINES} more lines omitted for performance ...
-                                                </div>
-                                            )}
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        </div>
+                    if (diffData?.hunks) {
+                        diffData.hunks.forEach(hunk => {
+                            let oldLine = hunk.old_start;
+                            let newLine = hunk.new_start;
 
-                        {/* After (New/Edited Content) */}
-                        <div className="diff-pane">
-                            <div className="diff-pane-header">
-                                {isEditing ? 'Editing' : 'After (This Commit)'}
-                            </div>
-                            {isEditing ? (
-                                <textarea
-                                    className="editor-textarea"
-                                    value={editedContent}
-                                    onChange={(e) => setEditedContent(e.target.value)}
-                                    spellCheck={false}
-                                />
-                            ) : (
-                                <div className="diff-code">
-                                    {(() => {
-                                        const lines = (diffData?.new_content || '').split('\n');
-                                        const MAX_LINES = 1000;
-                                        const displayLines = lines.slice(0, MAX_LINES);
-                                        const hasMore = lines.length > MAX_LINES;
+                            hunk.lines.forEach(line => {
+                                if (line.type === 'remove') {
+                                    removedLines.add(oldLine);
+                                    oldLine++;
+                                } else if (line.type === 'add') {
+                                    addedLines.add(newLine);
+                                    newLine++;
+                                } else {
+                                    oldLine++;
+                                    newLine++;
+                                }
+                            });
+                        });
+                    }
 
-                                        return (
-                                            <>
-                                                {displayLines.map((line, i) => (
-                                                    <div key={i} className="diff-line">
-                                                        <div className="diff-line-number">{i + 1}</div>
-                                                        <div className="diff-line-content">{line}</div>
-                                                    </div>
-                                                ))}
-                                                {hasMore && (
-                                                    <div className="diff-line-more">
-                                                        ... {lines.length - MAX_LINES} more lines omitted for performance ...
-                                                    </div>
-                                                )}
-                                            </>
-                                        );
-                                    })()}
+                    if (viewMode === 'split') {
+                        return (
+                            <div className="diff-split">
+                                {/* Before (Old Content) */}
+                                <div className="diff-pane">
+                                    <div className="diff-pane-header">
+                                        Before (Parent)
+                                    </div>
+                                    <div className="diff-code">
+                                        {(() => {
+                                            const lines = (diffData?.old_content || '').split('\n');
+                                            const MAX_LINES = 1000;
+                                            const displayLines = lines.slice(0, MAX_LINES);
+                                            const hasMore = lines.length > MAX_LINES;
+
+                                            return (
+                                                <>
+                                                    {displayLines.map((line, i) => {
+                                                        const lineNum = i + 1;
+                                                        const isRemoved = removedLines.has(lineNum);
+                                                        return (
+                                                            <div key={i} className={`diff-line ${isRemoved ? 'removed' : ''}`}>
+                                                                <div className="diff-line-number">{lineNum}</div>
+                                                                <div className="diff-line-content">{line}</div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {hasMore && (
+                                                        <div className="diff-line-more">
+                                                            ... {lines.length - MAX_LINES} more lines omitted for performance ...
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                ) : (
-                    /* Unified diff view */
-                    <div className="diff-code" style={{ padding: '8px 0' }}>
-                        {diffData?.hunks.map((hunk, hunkIndex) => (
-                            <div key={hunkIndex}>
-                                <div style={{
-                                    padding: '4px 16px',
-                                    background: 'var(--color-bg-tertiary)',
-                                    color: 'var(--color-text-tertiary)',
-                                    fontFamily: 'var(--font-family-mono)',
-                                    fontSize: '12px',
-                                }}>
-                                    @@ -{hunk.old_start},{hunk.old_lines} +{hunk.new_start},{hunk.new_lines} @@
-                                </div>
-                                {hunk.lines.map((line, lineIndex) => (
-                                    <div
-                                        key={lineIndex}
-                                        className={`diff-line ${line.type === 'add' ? 'added' : line.type === 'remove' ? 'removed' : ''}`}
-                                    >
-                                        <div className="diff-line-number" style={{ width: '80px' }}>
-                                            {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
+
+                                {/* After (New/Edited Content) */}
+                                <div className="diff-pane">
+                                    <div className="diff-pane-header">
+                                        {isEditing ? 'Editing' : 'After (This Commit)'}
+                                    </div>
+                                    {isEditing ? (
+                                        <textarea
+                                            className="editor-textarea"
+                                            value={editedContent}
+                                            onChange={(e) => setEditedContent(e.target.value)}
+                                            spellCheck={false}
+                                        />
+                                    ) : (
+                                        <div className="diff-code">
+                                            {(() => {
+                                                const lines = (diffData?.new_content || '').split('\n');
+                                                const MAX_LINES = 1000;
+                                                const displayLines = lines.slice(0, MAX_LINES);
+                                                const hasMore = lines.length > MAX_LINES;
+
+                                                return (
+                                                    <>
+                                                        {displayLines.map((line, i) => {
+                                                            const lineNum = i + 1;
+                                                            const isAdded = addedLines.has(lineNum);
+                                                            return (
+                                                                <div key={i} className={`diff-line ${isAdded ? 'added' : ''}`}>
+                                                                    <div className="diff-line-number">{lineNum}</div>
+                                                                    <div className="diff-line-content">{line}</div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {hasMore && (
+                                                            <div className="diff-line-more">
+                                                                ... {lines.length - MAX_LINES} more lines omitted for performance ...
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
-                                        <div className="diff-line-content">{line.content}</div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    } else {
+                        return (
+                            /* Unified diff view */
+                            <div className="diff-code" style={{ padding: '8px 0' }}>
+                                {diffData?.hunks.map((hunk, hunkIndex) => (
+                                    <div key={hunkIndex}>
+                                        <div style={{
+                                            padding: '4px 16px',
+                                            background: 'var(--color-bg-tertiary)',
+                                            color: 'var(--color-text-tertiary)',
+                                            fontFamily: 'var(--font-family-mono)',
+                                            fontSize: '12px',
+                                        }}>
+                                            @@ -{hunk.old_start},{hunk.old_lines} +{hunk.new_start},{hunk.new_lines} @@
+                                        </div>
+                                        {hunk.lines.map((line, lineIndex) => (
+                                            <div
+                                                key={lineIndex}
+                                                className={`diff-line ${line.type === 'add' ? 'added' : line.type === 'remove' ? 'removed' : ''}`}
+                                            >
+                                                <div className="diff-line-number" style={{ width: '80px' }}>
+                                                    {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
+                                                </div>
+                                                <div className="diff-line-content">{line.content}</div>
+                                            </div>
+                                        ))}
                                     </div>
                                 ))}
                             </div>
-                        ))}
-                    </div>
-                )}
+                        );
+                    }
+                })()}
             </div>
-        </div>
+        </div >
     );
 }

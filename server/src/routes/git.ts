@@ -136,12 +136,15 @@ router.post('/checkout/:hash', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/git/checkout-branch/:branch
+ * POST /api/git/checkout-branch
  * Checkout a branch
  */
-router.post('/checkout-branch/:branch', async (req: Request, res: Response) => {
+router.post('/checkout-branch', async (req: Request, res: Response) => {
     try {
-        const { branch } = req.params;
+        const { branch } = req.body;
+        if (!branch) {
+            return res.status(400).json({ error: 'branch name is required' });
+        }
         const result = await gitService.checkoutBranch(branch);
         res.json(result);
     } catch (error: any) {

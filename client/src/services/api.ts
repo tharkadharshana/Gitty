@@ -78,7 +78,7 @@ export const gitApi = {
     },
 
     async checkoutBranch(branch: string): Promise<OperationResult> {
-        const response = await api.post<OperationResult>(`/checkout-branch/${branch}`);
+        const response = await api.post<OperationResult>('/checkout-branch', { branch });
         return response.data;
     },
 

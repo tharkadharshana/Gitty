@@ -191,12 +191,14 @@ export class GitService {
             newContent = '';
         }
 
-        // Get the actual diff
+        // Get the actual diff output using git show
+        // This is more reliable for historical commits and handles merge commits naturally
         let diffOutput = '';
         try {
-            diffOutput = await this.git!.diff([`${hash}^`, hash, '--', filepath]);
-        } catch {
-            diffOutput = await this.git!.diff([hash, '--', filepath]);
+            diffOutput = await this.git!.show([hash, '--', filepath]);
+        } catch (error) {
+            console.error('Failed to get diff output:', error);
+            diffOutput = '';
         }
 
         return {

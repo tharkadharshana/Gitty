@@ -123,7 +123,9 @@ export function CommitDetails({
             setConflicts([]);
             setWorkflowStep('idle');
             setEditMode(false);
-            gitApi.checkoutBranch(repoInfo.current_branch);
+            if (targetBranch) {
+                gitApi.checkoutBranch(targetBranch);
+            }
             addToast('info', 'Rebase aborted. Changes discarded.');
         },
         onError: (error: Error) => {
@@ -154,14 +156,17 @@ export function CommitDetails({
             abortRebaseMutation.mutate();
         } else {
             try {
-                if (targetBranch) {
+                if (targetBranch && targetBranch !== 'DETACHED') {
                     await gitApi.checkoutBranch(targetBranch);
                 }
                 setEditMode(false);
                 setWorkflowStep('idle');
-                addToast('info', 'Edit cancelled, returned to branch.');
+                addToast('info', 'Edit cancelled.');
             } catch (error: any) {
-                addToast('error', `Failed to return to branch: ${error.message}`);
+                console.error('Cancel error:', error);
+                setEditMode(false);
+                setWorkflowStep('idle');
+                addToast('warning', 'Edit stopped, but could not return to branch.');
             }
         }
     };
