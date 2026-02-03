@@ -133,8 +133,8 @@ export const gitApi = {
         return response.data;
     },
 
-    async analyzeRefactor(filepath: string, targetContent: string): Promise<RefactorPlan> {
-        const response = await api.post<RefactorPlan>('/analyze-refactor', { filepath, targetContent });
+    async analyzeRefactor(filepath: string, targetContent: string, repoPath?: string): Promise<RefactorPlan> {
+        const response = await api.post<RefactorPlan>('/analyze-refactor', { filepath, targetContent, repoPath });
         return response.data;
     },
 
