@@ -7,10 +7,16 @@ import type {
     DiffResult,
     FileContent,
     OperationResult,
+    RefactorPlan,
+    RefactorCommit,
 } from '../types';
 
+// Determine if we are running in Electron (via file protocol)
+const isElectron = window.location.protocol === 'file:';
+const baseURL = isElectron ? 'http://localhost:3080/api/git' : '/api/git';
+
 const api = axios.create({
-    baseURL: '/api/git',
+    baseURL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -128,6 +134,16 @@ export const gitApi = {
 
     async moveBranchToHead(branch: string): Promise<OperationResult> {
         const response = await api.post<OperationResult>('/move-branch', { branch });
+        return response.data;
+    },
+
+    async analyzeRefactor(filepath: string, targetContent: string): Promise<RefactorPlan> {
+        const response = await api.post<RefactorPlan>('/analyze-refactor', { filepath, targetContent });
+        return response.data;
+    },
+
+    async applyRefactor(filepath: string, commits: RefactorCommit[]): Promise<OperationResult> {
+        const response = await api.post<OperationResult>('/apply-refactor', { filepath, commits });
         return response.data;
     },
 };

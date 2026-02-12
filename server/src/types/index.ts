@@ -92,3 +92,19 @@ export interface FileContent {
     content: string;
     encoding: 'utf-8' | 'binary';
 }
+
+export interface RefactorCommit {
+    id: string;
+    message: string;
+    changes: string; // The content specifically for this commit
+}
+
+export interface RefactorPlan {
+    filepath: string;
+    commits: RefactorCommit[];
+}
+
+export interface RefactorRequest {
+    filepath: string;
+    targetContent: string;
+}

@@ -102,3 +102,14 @@ export interface WorkflowState {
     modifiedFiles: string[];
     error: string | null;
 }
+
+export interface RefactorCommit {
+    id: string;
+    message: string;
+    changes: string;
+}
+
+export interface RefactorPlan {
+    filepath: string;
+    commits: RefactorCommit[];
+}

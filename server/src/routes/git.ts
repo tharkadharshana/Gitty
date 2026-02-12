@@ -314,4 +314,38 @@ router.post('/move-branch', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * POST /api/git/analyze-refactor
+ * Suggest a multi-commit refactor plan
+ */
+router.post('/analyze-refactor', async (req: Request, res: Response) => {
+    try {
+        const { filepath, targetContent } = req.body;
+        if (!filepath || targetContent === undefined) {
+            return res.status(400).json({ error: 'filepath and targetContent are required' });
+        }
+        const plan = await gitService.analyzeRefactor(filepath, targetContent);
+        res.json(plan);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/git/apply-refactor
+ * Apply a sequence of refactor commits
+ */
+router.post('/apply-refactor', async (req: Request, res: Response) => {
+    try {
+        const { filepath, commits } = req.body;
+        if (!filepath || !commits || !Array.isArray(commits)) {
+            return res.status(400).json({ error: 'filepath and commits array are required' });
+        }
+        const result = await gitService.applyRefactorSequence(filepath, commits);
+        res.json(result);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 export default router;

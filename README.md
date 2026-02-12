@@ -17,31 +17,44 @@ Detailed technical documentation can be found in the [**/docs**](file:///d:/Proj
 - [Workflow Logic](file:///d:/Projects/Gitty/docs/workflow.md)
 - [API Reference](file:///d:/Projects/Gitty/docs/api_reference.md)
 
-## 🚀 Quick Start
+## 💻 Desktop App
+
+Gitty is now available as a standalone desktop application for Windows!
+
+### 📥 Download & Install
+1. Go to the [Releases](https://github.com/YourGitHubUsername/Gitty/releases) page.
+2. Download the latest `Gitty Setup x.x.x.exe`.
+3. Run the installer.
+   - You can choose your installation folder.
+   - Desktop and Start Menu shortcuts will be created automatically.
+
+### ✨ Desktop Features
+- **Auto-Updates**: The app checks for new versions on startup and updates automatically.
+- **System Integration**: Native file system access for better performance.
+- **Debug Logs**: Easily access logs via the Settings menu for troubleshooting.
+
+## 🚀 Development
 
 ### Prerequisites
-
 - Node.js 18+ 
 - npm 9+
 - Git 2.0+
 
-### Installation
-
+### Local Web Development
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/gitty.git
-cd gitty
-
-# Install dependencies
 npm install
-
-# Start development servers
 npm run dev
 ```
 
-The app will be available at:
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3001
+### Desktop App Development
+```bash
+# Run in development mode (Webpack/Electron with Hot Reload)
+npm run dev
+
+# Build for production (Windows .exe)
+npm run dist
+```
+The installer will be generated in `dist-electron/`.
 
 ## 🏗️ Architecture
 

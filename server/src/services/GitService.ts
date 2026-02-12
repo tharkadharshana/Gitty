@@ -1,6 +1,7 @@
 import simpleGit, { SimpleGit, LogResult, StatusResult } from 'simple-git';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { aiService } from './AIService';
 import {
     CommitInfo,
     FileChange,
@@ -9,6 +10,9 @@ import {
     BranchInfo,
     OperationResult,
     FileContent,
+    RefactorPlan,
+    RefactorCommit,
+    RefactorRequest,
 } from '../types';
 
 export class GitService {
@@ -599,6 +603,49 @@ export class GitService {
         }
 
         return hunks;
+    }
+
+    /**
+     * Analyze a file change and suggest a multi-commit refactor plan using AI
+     */
+    async analyzeRefactor(filepath: string, targetContent: string): Promise<RefactorPlan> {
+        this.ensureRepo();
+
+        const current = await this.getWorkingFileContent(filepath);
+        const currentContent = current.content;
+
+        // Delegate to AI Service for intelligent splitting
+        return aiService.suggestCommits(filepath, currentContent, targetContent);
+    }
+
+    /**
+     * Apply a sequence of refactor commits
+     */
+    async applyRefactorSequence(filepath: string, commits: RefactorCommit[]): Promise<OperationResult> {
+        this.ensureRepo();
+
+        try {
+            for (const commit of commits) {
+                // 1. Write the state for this commit
+                await this.writeFile(filepath, commit.changes);
+
+                // 2. Stage
+                await this.git!.add(filepath);
+
+                // 3. Commit
+                await this.git!.commit(commit.message);
+            }
+
+            return {
+                success: true,
+                message: `Successfully applied ${commits.length} commits for ${filepath}`,
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: `Failed during sequence: ${error.message}`,
+            };
+        }
     }
 
     /**
