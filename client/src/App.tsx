@@ -13,6 +13,8 @@ import { DiffViewer } from './components/DiffViewer';
 import { OpenRepoModal } from './components/OpenRepoModal';
 import { BranchSelector } from './components/BranchSelector';
 import { Toast, ToastContainer, useToast } from './components/Toast';
+import UpdateNotification from './components/UpdateNotification';
+import { SettingsModal } from './components/SettingsModal';
 import type { CommitInfo, FileChange, RepoInfo } from './types';
 
 function App() {
@@ -20,8 +22,10 @@ function App() {
     const { toasts, addToast, removeToast } = useToast();
 
     const [isOpenModalVisible, setOpenModalVisible] = useState(false);
+    const [isSettingsModalVisible, setSettingsModalVisible] = useState(false);
     const [selectedCommit, setSelectedCommit] = useState<CommitInfo | null>(null);
     const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
+    const [logPath, setLogPath] = useState<string | null>(null);
 
     // Sidebar resizing
     const [sidebarWidth, setSidebarWidth] = useState(320);
@@ -58,6 +62,16 @@ function App() {
             window.removeEventListener('mouseup', stopResizing);
         };
     }, [isResizing, resize, stopResizing]);
+
+    // Listen for log path from Electron
+    useEffect(() => {
+        if ((window as any).electron) {
+            (window as any).electron.onLogPath((_event: any, path: string) => {
+                console.log('Log path received:', path);
+                setLogPath(path);
+            });
+        }
+    }, []);
 
     // Query for repository info
     const { data: repoInfo, refetch: refetchRepoInfo } = useQuery<RepoInfo>({
@@ -188,7 +202,11 @@ function App() {
                         <FolderOpen size={16} />
                         Open Repository
                     </button>
-                    <button className="btn btn-ghost btn-icon" title="Settings">
+                    <button
+                        className="btn btn-ghost btn-icon"
+                        title="Settings"
+                        onClick={() => setSettingsModalVisible(true)}
+                    >
                         <Settings size={18} />
                     </button>
                 </div>
@@ -268,6 +286,14 @@ function App() {
                 />
             )}
 
+            {isSettingsModalVisible && (
+                <SettingsModal
+                    onClose={() => setSettingsModalVisible(false)}
+                    logPath={logPath}
+                    appVersion="1.0.0"
+                />
+            )}
+
             {/* Toast Notifications */}
             <ToastContainer>
                 {toasts.map((toast) => (
@@ -279,6 +305,9 @@ function App() {
                     />
                 ))}
             </ToastContainer>
+
+            {/* Electron Update Notification */}
+            <UpdateNotification />
         </div>
     );
 }
