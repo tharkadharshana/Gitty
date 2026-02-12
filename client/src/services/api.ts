@@ -11,8 +11,12 @@ import type {
     RefactorCommit,
 } from '../types';
 
+// Determine if we are running in Electron (via file protocol)
+const isElectron = window.location.protocol === 'file:';
+const baseURL = isElectron ? 'http://localhost:3080/api/git' : '/api/git';
+
 const api = axios.create({
-    baseURL: '/api/git',
+    baseURL,
     headers: {
         'Content-Type': 'application/json',
     },

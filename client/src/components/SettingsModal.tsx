@@ -6,9 +6,11 @@ interface SettingsModalProps {
     onClose: () => void;
     addToast: (type: 'success' | 'error' | 'info', message: string) => void;
     repoPath?: string;
+    logPath: string | null;
+    appVersion: string;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, addToast, repoPath }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, addToast, repoPath, logPath, appVersion }) => {
     const [apiKey, setApiKey] = useState('');
     const [repoRules, setRepoRules] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -68,13 +70,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, addToast,
         <div className="modal-overlay">
             <div className="modal-content" style={{ width: '600px', maxWidth: '90vw' }}>
                 <div className="modal-header">
-                    <h2>Application Settings</h2>
+                    <h2>Settings & Debug Info</h2>
                     <button className="btn btn-ghost btn-icon" onClick={onClose}>
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="modal-body">
+                <div className="modal-body custom-scrollbar" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                    <div className="setting-group mb-6">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Application Info</h3>
+                        <p className="text-gray-300"><strong>Version:</strong> {appVersion}</p>
+                    </div>
+
+                    <hr className="border-gray-800 my-6" />
+
                     {/* API Key Section */}
                     <div className="form-group mb-6">
                         <label className="form-label flex items-center gap-2">
@@ -100,14 +109,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, addToast,
 
                     {/* Repo Rules Section */}
                     {repoPath ? (
-                        <div className="form-group">
+                        <div className="form-group mb-6">
                             <label className="form-label flex items-center gap-2">
                                 <FileText size={16} />
                                 Repository Rules: <span className="text-xs font-mono bg-dark-lighter px-1 rounded">{repoPath}</span>
                             </label>
                             <textarea
                                 className="form-input"
-                                rows={6}
+                                rows={4}
                                 value={repoRules}
                                 onChange={(e) => setRepoRules(e.target.value)}
                                 placeholder="Example: Always use 'feat:', 'fix:', 'chore:' prefixes. Max 50 chars for title."
@@ -117,11 +126,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, addToast,
                             </p>
                         </div>
                     ) : (
-                        <div className="alert alert-info">
+                        <div className="alert alert-info mb-6">
                             <AlertTriangle size={16} />
                             <span>Open a repository to configure repository-specific rules.</span>
                         </div>
                     )}
+
+                    <hr className="border-gray-800 my-6" />
+
+                    {/* Debug Logs Section */}
+                    <div className="setting-group mt-6">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Debug Logs</h3>
+                        <p className="text-sm text-gray-400 mb-2">
+                            If you encounter issues, please check the log file located at:
+                        </p>
+
+                        {logPath ? (
+                            <div className="p-3 bg-dark-darker rounded border border-gray-800 break-all font-mono text-xs text-gray-300">
+                                {logPath}
+                            </div>
+                        ) : (
+                            <p className="italic text-gray-500 text-sm">
+                                Log path not available (are you running in Electron mode?)
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="modal-footer">

@@ -20,6 +20,7 @@ import { FileExplorer } from './components/FileExplorer';
 import { RefactorWizard } from './components/RefactorWizard';
 import { BranchSelector } from './components/BranchSelector';
 import { Toast, ToastContainer, useToast } from './components/Toast';
+import UpdateNotification from './components/UpdateNotification';
 import type { CommitInfo, FileChange, RepoInfo } from './types';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
     const [isSettingsModalVisible, setSettingsModalVisible] = useState(false);
     const [selectedCommit, setSelectedCommit] = useState<CommitInfo | null>(null);
     const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
+    const [logPath, setLogPath] = useState<string | null>(null);
 
     // Workspace Mode State
     const [sidebarMode, setSidebarMode] = useState<'history' | 'workspace'>('history');
@@ -71,6 +73,16 @@ function App() {
             window.removeEventListener('mouseup', stopResizing);
         };
     }, [isResizing, resize, stopResizing]);
+
+    // Listen for log path from Electron
+    useEffect(() => {
+        if ((window as any).electron) {
+            (window as any).electron.onLogPath((_event: any, path: string) => {
+                console.log('Log path received:', path);
+                setLogPath(path);
+            });
+        }
+    }, []);
 
     // Query for repository info
     const { data: repoInfo, refetch: refetchRepoInfo } = useQuery<RepoInfo>({
@@ -238,8 +250,8 @@ function App() {
                         <div className="flex p-1 bg-dark-darker rounded-lg border border-gray-800">
                             <button
                                 className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${sidebarMode === 'history'
-                                        ? 'bg-primary/20 text-primary shadow-sm ring-1 ring-primary/50'
-                                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                                    ? 'bg-primary/20 text-primary shadow-sm ring-1 ring-primary/50'
+                                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                                     }`}
                                 onClick={() => setSidebarMode('history')}
                             >
@@ -248,8 +260,8 @@ function App() {
                             </button>
                             <button
                                 className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${sidebarMode === 'workspace'
-                                        ? 'bg-primary/20 text-primary shadow-sm ring-1 ring-primary/50'
-                                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                                    ? 'bg-primary/20 text-primary shadow-sm ring-1 ring-primary/50'
+                                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                                     }`}
                                 onClick={() => setSidebarMode('workspace')}
                             >
@@ -392,6 +404,8 @@ function App() {
                     onClose={() => setSettingsModalVisible(false)}
                     addToast={addToast}
                     repoPath={repoInfo?.path}
+                    logPath={logPath}
+                    appVersion="1.0.0"
                 />
             )}
 
@@ -406,6 +420,9 @@ function App() {
                     />
                 ))}
             </ToastContainer>
+
+            {/* Electron Update Notification */}
+            <UpdateNotification />
         </div>
     );
 }
