@@ -16,23 +16,25 @@ import type { RefactorPlan } from '../types';
 
 interface RefactorWizardProps {
     filepath: string;
+    currentContent?: string;
+    repoPath: string;
     onClose: () => void;
     onComplete: () => void;
 }
 
 type WizardStep = 'PASTE' | 'PLAN' | 'EXECUTING' | 'DONE';
 
-export function RefactorWizard({ filepath, onClose, onComplete }: RefactorWizardProps) {
+export function RefactorWizard({ filepath, currentContent, repoPath, onClose, onComplete }: RefactorWizardProps) {
     const queryClient = useQueryClient();
     const [step, setStep] = useState<WizardStep>('PASTE');
-    const [targetContent, setTargetContent] = useState('');
+    const [targetContent, setTargetContent] = useState(currentContent || '');
     const [plan, setPlan] = useState<RefactorPlan | null>(null);
     const [executingIndex, setExecutingIndex] = useState(-1);
     const [error, setError] = useState<string | null>(null);
 
     // Analysis Mutation
     const analyzeMutation = useMutation({
-        mutationFn: () => gitApi.analyzeRefactor(filepath, targetContent),
+        mutationFn: () => gitApi.analyzeRefactor(filepath, targetContent, repoPath),
         onSuccess: (data) => {
             setPlan(data);
             setStep('PLAN');

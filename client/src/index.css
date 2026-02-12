@@ -1,3 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
 /* ========================================
    Gitty Design System
    A modern, dark-themed Git history editor

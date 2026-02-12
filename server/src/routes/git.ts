@@ -320,11 +320,11 @@ router.post('/move-branch', async (req: Request, res: Response) => {
  */
 router.post('/analyze-refactor', async (req: Request, res: Response) => {
     try {
-        const { filepath, targetContent } = req.body;
+        const { filepath, targetContent, repoPath } = req.body;
         if (!filepath || targetContent === undefined) {
             return res.status(400).json({ error: 'filepath and targetContent are required' });
         }
-        const plan = await gitService.analyzeRefactor(filepath, targetContent);
+        const plan = await gitService.analyzeRefactor(filepath, targetContent, repoPath);
         res.json(plan);
     } catch (error: any) {
         res.status(400).json({ error: error.message });

@@ -608,14 +608,14 @@ export class GitService {
     /**
      * Analyze a file change and suggest a multi-commit refactor plan using AI
      */
-    async analyzeRefactor(filepath: string, targetContent: string): Promise<RefactorPlan> {
+    async analyzeRefactor(filepath: string, targetContent: string, repoPath?: string): Promise<RefactorPlan> {
         this.ensureRepo();
 
         const current = await this.getWorkingFileContent(filepath);
         const currentContent = current.content;
 
         // Delegate to AI Service for intelligent splitting
-        return aiService.suggestCommits(filepath, currentContent, targetContent);
+        return aiService.suggestCommits(filepath, currentContent, targetContent, repoPath);
     }
 
     /**

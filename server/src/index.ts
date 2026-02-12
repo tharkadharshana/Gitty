@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import gitRoutes from './routes/git';
+import settingsRouter from './routes/settings';
+import filesRouter from './routes/files';
 
 const app = express();
 const PORT = process.env.PORT || 3080;
@@ -12,6 +14,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
 app.use('/api/git', gitRoutes);
+app.use('/api/settings', settingsRouter);
+app.use('/api/files', filesRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

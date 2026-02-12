@@ -1,27 +1,37 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config';
 import { RefactorPlan, RefactorCommit } from '../types';
+import { settingsService } from './SettingsService';
 
 export class AIService {
-    private genAI: GoogleGenerativeAI | null = null;
+    private getGenAI(): GoogleGenerativeAI | null {
+        // Try DB first, then config/env
+        const dbKey = settingsService.getGeminiKey();
+        const apiKey = dbKey || config.geminiApiKey;
 
-    constructor() {
-        if (config.geminiApiKey) {
-            this.genAI = new GoogleGenerativeAI(config.geminiApiKey);
+        if (apiKey) {
+            return new GoogleGenerativeAI(apiKey);
         }
+        return null;
     }
 
-    async suggestCommits(filepath: string, currentContent: string, targetContent: string): Promise<RefactorPlan> {
-        if (!this.genAI) {
+    async suggestCommits(filepath: string, currentContent: string, targetContent: string, repoPath?: string): Promise<RefactorPlan> {
+        const genAI = this.getGenAI();
+        if (!genAI) {
             // Fallback to simple heuristic if no API key
+            console.log('[AIService] No API key found in DB or Env, using fallback heuristic.');
             return this.fallbackHeuristic(filepath, currentContent, targetContent);
         }
 
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        // Get custom rules for this repo
+        const repoRules = repoPath ? settingsService.getRepoRules(repoPath) : undefined;
 
         const prompt = `
             You are an expert software engineer specializing in clean Git history.
             I have a file "${filepath}" that has been refactored.
+            ${repoRules ? `\nIMPORTANT REPO RULES: ${repoRules}\n` : ''}
             
             CURRENT CONTENT:
             file_content_start
